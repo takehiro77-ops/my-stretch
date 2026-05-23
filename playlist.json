@@ -1,10 +1,34 @@
 {
   "clips": [
     {
-      "title": "例: 朝のストレッチ",
-      "url": "",
+      "title": "山内式手首再起動",
+      "url": "https://youtu.be/gWUMNSITYC0?si=1c4ZWubRlQ5tWaWs&t=350",
+      "start": 350,
+      "end": 437
+    },
+    {
+      "title": "山内式手首ストレッチ",
+      "url": "https://youtu.be/JKT2JFLCQ_U?si=RW_RY-fZ4lDFGQPs&t=556",
+      "start": 556,
+      "end": 685
+    },
+    {
+      "title": "山内式肩甲下筋ストレッチ",
+      "url": "https://youtu.be/DcW0WJItrcs?si=w_8N007qoLgd7VSV&t=348",
+      "start": 348,
+      "end": 440
+    },
+    {
+      "title": "首コリ改善ストレッチ",
+      "url": "https://youtu.be/tRhDIHWk0Pw?si=1ZZptuU87Kyb2BmS&t=108",
+      "start": 108,
+      "end": 724
+    },
+    {
+      "title": "オガトレ寝る前専用ストレッチ",
+      "url": "https://youtu.be/09C7ti0xY4k?si=UXUHnoqRQNKx93uc",
       "start": 0,
-      "end": 60
+      "end": 583
     }
   ]
 }
