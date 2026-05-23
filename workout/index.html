@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>マイ運動動画</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    background: #0a0a0a;
+    color: #f0f0f0;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    margin: 0;
+    padding: 16px;
+    min-height: 100vh;
+  }
+  .container { max-width: 900px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 8px 0 16px; }
+  .hint { color: #888; font-size: 13px; margin-bottom: 16px; line-height: 1.6; }
+  .hint code { background: #1f1f1f; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+
+  /* Buttons */
+  button, a.button {
+    background: #2a2a2a;
+    color: #fff;
+    border: 1px solid #444;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 15px;
+    margin: 4px;
+    text-decoration: none;
+    display: inline-block;
+  }
+  button:hover, a.button:hover { background: #3a3a3a; }
+  button.primary { background: #d32f2f; border-color: #d32f2f; }
+  button.primary:hover { background: #b71c1c; }
+  button.success { background: #2e7d32; border-color: #2e7d32; }
+  button.success:hover { background: #1b5e20; }
+  .toolbar { margin-bottom: 16px; display: flex; flex-wrap: wrap; gap: 4px; }
+
+  /* Clip cards */
+  .clip-item {
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    padding: 14px;
+    margin: 10px 0;
+    border-radius: 8px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .clip-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .clip-index {
+    background: #d32f2f;
+    color: #fff;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  input, textarea {
+    background: #0a0a0a;
+    color: #fff;
+    border: 1px solid #333;
+    padding: 8px 10px;
+    border-radius: 4px;
+    font-size: 14px;
+    flex: 1;
+    min-width: 100px;
+    font-family: inherit;
+  }
+  input:focus, textarea:focus { outline: none; border-color: #d32f2f; }
+  .time-input { max-width: 90px; flex: 0 0 auto; }
+  .icon-btn {
+    padding: 6px 10px;
+    font-size: 14px;
+    background: transparent;
+    border: 1px solid #444;
+  }
+
+  /* Play mode */
+  #playMode { display: none; }
+  .player-wrapper {
+    position: relative;
+    width: 100%;
+    padding-bottom: 56.25%;
+    background: #000;
+    margin-bottom: 16px;
+  }
+  #player {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  #startOverlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.78);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+  #startOverlayBtn {
+    font-size: 22px;
+    padding: 22px 36px;
+    background: #d32f2f;
+    border-color: #d32f2f;
+  }
+  #startOverlayBtn:focus {
+    outline: 4px solid #fff;
+    outline-offset: 2px;
+    background: #b71c1c;
+  }
+  .now-playing {
+    background: #1a1a1a;
+    padding: 14px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    font-size: 16px;
+  }
+  .now-playing .num { color: #d32f2f; font-weight: bold; margin-right: 8px; }
+  .play-controls {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .play-controls button {
+    font-size: 18px;
+    padding: 14px 20px;
+    min-width: 80px;
+  }
+
+  /* Save modal */
+  #saveMode { display: none; }
+  #jsonOutput {
+    width: 100%;
+    min-height: 240px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px;
+    margin: 12px 0;
+  }
+  .step {
+    background: #1a1a1a;
+    padding: 12px 14px;
+    border-radius: 6px;
+    margin: 8px 0;
+    border-left: 3px solid #d32f2f;
+  }
+  .step b { color: #fff; }
+
+  /* TV-friendly large mode */
+  @media (min-width: 900px) {
+    body { padding: 32px; }
+    h1 { font-size: 28px; }
+    .now-playing { font-size: 22px; padding: 20px; }
+    .play-controls button { font-size: 22px; padding: 18px 28px; min-width: 110px; }
+  }
+
+  .label { font-size: 12px; color: #888; margin-right: 4px; }
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: #666;
+    border: 2px dashed #333;
+    border-radius: 8px;
+    margin: 20px 0;
+  }
+  .status-line {
+    font-size: 12px;
+    color: #888;
+    margin: 8px 0;
+  }
+  .status-line .ok { color: #4caf50; }
+  .status-line .warn { color: #ff9800; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- EDIT MODE -->
+  <div id="editMode">
+    <h1>💪 マイ運動動画</h1>
+    <div class="hint">
+      YouTubeのURL・開始時刻・終了時刻を入れて「再生開始」を押すと、指定区間だけを順番に連続再生します。<br>
+      編集が終わったら <b>💾 GitHubに保存</b> でリストを <code>workout/playlist.json</code> に保存。<br>
+      Fire TVは <code>https://takehiro77-ops.github.io/my-stretch/workout/</code> をブックマークするだけで、毎回最新リストが自動読み込みされます。
+    </div>
+    <div class="status-line" id="statusLine"></div>
+
+    <div class="toolbar">
+      <button class="primary" onclick="startPlaying()">▶ 再生開始</button>
+      <button onclick="addClip()">+ クリップを追加</button>
+      <button class="success" onclick="showSaveModal()">💾 GitHubに保存</button>
+    </div>
+
+    <div id="clipList"></div>
+  </div>
+
+  <!-- PLAY MODE -->
+  <div id="playMode">
+    <div class="now-playing">
+      <span class="num" id="clipNum"></span>
+      <span id="clipTitle"></span>
+    </div>
+    <div class="player-wrapper">
+      <div id="player"></div>
+      <div id="startOverlay">
+        <button id="startOverlayBtn" onclick="overlayStart()">▶ 決定ボタンで再生開始</button>
+      </div>
+    </div>
+    <div class="play-controls">
+      <button onclick="previousClip()">⏮ 前</button>
+      <button onclick="togglePause()" id="pauseBtn">⏸ 一時停止</button>
+      <button onclick="nextClip()">⏭ 次</button>
+      <button onclick="exitPlaying()">編集に戻る</button>
+    </div>
+  </div>
+
+  <!-- SAVE MODE -->
+  <div id="saveMode">
+    <h1>💾 workout/playlist.json に保存</h1>
+    <div class="hint">
+      この内容を <code>workout/playlist.json</code> に保存すると、Fire TVなどの再生機が次回から自動でこのリストを読み込みます。
+    </div>
+
+    <div class="step">
+      <b>STEP 1.</b> 下のJSONを「📋 JSONをコピー」でコピー
+    </div>
+    <textarea id="jsonOutput" readonly></textarea>
+
+    <div class="step">
+      <b>STEP 2.</b> 「📝 GitHubで workout/playlist.json を編集」をクリック → GitHubのページで中身を**全選択して削除** → コピーしたJSONを貼り付け → 下部の <b>Commit changes</b> ボタンを押す
+    </div>
+
+    <div class="toolbar">
+      <button class="primary" onclick="copyJson()">📋 JSONをコピー</button>
+      <a id="editLink" class="button success" href="" target="_blank" rel="noopener">📝 GitHubで workout/playlist.json を編集</a>
+      <button onclick="hideSaveModal()">← 編集に戻る</button>
+    </div>
+
+    <div class="step">
+      <b>STEP 3.</b> 保存後、Fire TVのブックマーク（URLハッシュなしの <code>https://takehiro77-ops.github.io/my-stretch/workout/</code>）を開けば最新リストが反映されています
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const REPO_OWNER = 'takehiro77-ops';
+  const REPO_NAME = 'my-stretch';
+
+  let clips = [];
+  let currentIndex = 0;
+  let player = null;
+  let checkInterval = null;
+  let ytReady = false;
+  let pendingPlay = false;
+  let lastAdvanceTime = 0;       // for debouncing auto-advance
+  const ADVANCE_DEBOUNCE_MS = 1500;
+  let playlistJsonExists = false;
+
+  // --- YouTube API ---
+  window.onYouTubeIframeAPIReady = function() {
+    ytReady = true;
+    if (pendingPlay) {
+      pendingPlay = false;
+      loadCurrentClip();
+    }
+  };
+  (function() {
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    document.head.appendChild(tag);
+  })();
+
+  // --- URL helpers ---
+  function parseYouTubeUrl(url) {
+    if (!url) return { videoId: null, startTime: null };
+    const idMatch = url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})/);
+    const videoId = idMatch ? idMatch[1] : null;
+    const tMatch = url.match(/[?&]t=(\d+)/);
+    const startTime = tMatch ? parseInt(tMatch[1]) : null;
+    return { videoId, startTime };
+  }
+
+  function formatTime(s) {
+    if (s == null || isNaN(s)) return '';
+    s = Math.max(0, Math.floor(s));
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+  }
+
+  function parseTime(str) {
+    if (!str) return 0;
+    str = str.toString().trim();
+    if (str.includes(':')) {
+      const parts = str.split(':').map(s => parseInt(s) || 0);
+      if (parts.length === 2) return parts[0] * 60 + parts[1];
+      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    }
+    return parseInt(str) || 0;
+  }
+
+  // --- Data loading: hash > playlist.json > default ---
+  async function loadInitialData() {
+    // 1. URL hash (for sharing/preview)
+    if (location.hash.startsWith('#d=')) {
+      try {
+        const json = decodeURIComponent(escape(atob(location.hash.substring(3))));
+        const data = JSON.parse(json);
+        if (data.clips && data.clips.length) {
+          clips = data.clips;
+          setStatus('URLハッシュからリストを読み込みました（プレビューモード）', 'warn');
+          return;
+        }
+      } catch(e) { console.warn('Failed to load from hash:', e); }
+    }
+
+    // 2. playlist.json (the source of truth)
+    try {
+      const res = await fetch('playlist.json?t=' + Date.now(), { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.clips && data.clips.length) {
+          clips = data.clips;
+          playlistJsonExists = true;
+          setStatus('playlist.json から読み込み済み', 'ok');
+          return;
+        }
+        playlistJsonExists = true;
+      }
+    } catch(e) { console.warn('No playlist.json or fetch failed:', e); }
+
+    // 3. Default
+    clips = [{ title: '例: 朝の運動', url: '', start: 0, end: 60 }];
+    setStatus('playlist.json はまだありません。クリップを追加して「💾 GitHubに保存」を押してください', 'warn');
+  }
+
+  function setStatus(text, kind) {
+    const el = document.getElementById('statusLine');
+    if (!el) return;
+    el.innerHTML = '<span class="' + (kind || '') + '">' + text + '</span>';
+  }
+
+  function saveToHash() {
+    try {
+      const json = JSON.stringify({ clips });
+      const encoded = btoa(unescape(encodeURIComponent(json)));
+      history.replaceState(null, '', '#d=' + encoded);
+    } catch(e) { console.warn('Save failed:', e); }
+  }
+
+  // --- Clip management ---
+  function addClip() {
+    clips.push({ title: '', url: '', start: 0, end: 60 });
+    saveToHash();
+    renderClips();
+  }
+
+  function deleteClip(i) {
+    if (!confirm('このクリップを削除しますか？')) return;
+    clips.splice(i, 1);
+    saveToHash();
+    renderClips();
+  }
+
+  function moveClip(i, dir) {
+    const j = i + dir;
+    if (j < 0 || j >= clips.length) return;
+    [clips[i], clips[j]] = [clips[j], clips[i]];
+    saveToHash();
+    renderClips();
+  }
+
+  function updateClip(i, field, value) {
+    if (field === 'url') {
+      clips[i].url = value;
+      const { startTime } = parseYouTubeUrl(value);
+      if (startTime != null && (!clips[i].start || clips[i].start === 0)) {
+        clips[i].start = startTime;
+        renderClips();
+      }
+    } else if (field === 'title') {
+      clips[i].title = value;
+    } else if (field === 'start' || field === 'end') {
+      clips[i][field] = parseTime(value);
+    }
+    saveToHash();
+  }
+
+  function renderClips() {
+    const list = document.getElementById('clipList');
+    list.innerHTML = '';
+    if (clips.length === 0) {
+      list.innerHTML = '<div class="empty-state">「クリップを追加」を押して始めましょう</div>';
+      return;
+    }
+    clips.forEach((clip, i) => {
+      const div = document.createElement('div');
+      div.className = 'clip-item';
+      div.innerHTML = `
+        <div class="clip-row">
+          <div class="clip-index">${i + 1}</div>
+          <input placeholder="タイトル（例: スクワット）" value="${escapeHtml(clip.title || '')}"
+                 onchange="updateClip(${i}, 'title', this.value)">
+          <button class="icon-btn" onclick="moveClip(${i}, -1)" title="上へ">↑</button>
+          <button class="icon-btn" onclick="moveClip(${i}, 1)" title="下へ">↓</button>
+          <button class="icon-btn" onclick="deleteClip(${i})" title="削除">🗑</button>
+        </div>
+        <div class="clip-row">
+          <input placeholder="YouTube URL を貼り付け" value="${escapeHtml(clip.url || '')}"
+                 onchange="updateClip(${i}, 'url', this.value)">
+        </div>
+        <div class="clip-row">
+          <span class="label">開始</span>
+          <input class="time-input" placeholder="0:00" value="${formatTime(clip.start)}"
+                 onchange="updateClip(${i}, 'start', this.value)">
+          <span class="label">終了</span>
+          <input class="time-input" placeholder="1:00" value="${formatTime(clip.end)}"
+                 onchange="updateClip(${i}, 'end', this.value)">
+          <span class="label" style="margin-left:auto">${formatTime(Math.max(0, (clip.end||0) - (clip.start||0)))}</span>
+        </div>
+      `;
+      list.appendChild(div);
+    });
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // --- Playback ---
+  function startPlaying() {
+    const valid = clips.filter(c => parseYouTubeUrl(c.url).videoId);
+    if (valid.length === 0) {
+      alert('有効なYouTube URLが入ったクリップがありません');
+      return;
+    }
+    document.getElementById('editMode').style.display = 'none';
+    document.getElementById('saveMode').style.display = 'none';
+    document.getElementById('playMode').style.display = 'block';
+    currentIndex = 0;
+    while (currentIndex < clips.length && !parseYouTubeUrl(clips[currentIndex].url).videoId) {
+      currentIndex++;
+    }
+    lastAdvanceTime = Date.now(); // lock auto-advance briefly so old ENDED can't immediately skip
+    // Show the large start button as a fallback; if the browser allows
+    // autoplay it will start on its own and the overlay hides itself.
+    showStartOverlay();
+    if (ytReady) {
+      loadCurrentClip();
+    } else {
+      pendingPlay = true;
+    }
+  }
+
+  function showStartOverlay() {
+    const overlay = document.getElementById('startOverlay');
+    if (!overlay) return;
+    overlay.style.display = 'flex';
+    // Autofocus so the Fire TV remote's center/OK button triggers it directly.
+    setTimeout(() => {
+      const btn = document.getElementById('startOverlayBtn');
+      if (btn) btn.focus();
+    }, 150);
+  }
+
+  function hideStartOverlay() {
+    const overlay = document.getElementById('startOverlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  function overlayStart() {
+    hideStartOverlay();
+    if (player && player.playVideo) {
+      player.playVideo();
+    } else if (ytReady) {
+      loadCurrentClip();
+    } else {
+      pendingPlay = true;
+    }
+  }
+
+  function loadCurrentClip() {
+    const clip = clips[currentIndex];
+    const { videoId } = parseYouTubeUrl(clip.url);
+    if (!videoId) { nextClip(); return; }
+
+    document.getElementById('clipNum').textContent = `${currentIndex + 1}/${clips.length}`;
+    document.getElementById('clipTitle').textContent = clip.title || '(無題)';
+
+    const startSec = clip.start || 0;
+    const endSec = clip.end || (startSec + 60);
+
+    if (player && player.loadVideoById) {
+      player.loadVideoById({
+        videoId: videoId,
+        startSeconds: startSec,
+        endSeconds: endSec
+      });
+    } else {
+      player = new YT.Player('player', {
+        height: '100%',
+        width: '100%',
+        videoId: videoId,
+        playerVars: {
+          start: startSec,
+          end: endSec,
+          autoplay: 1,
+          controls: 1,
+          rel: 0,
+          modestbranding: 1,
+          playsinline: 1
+        },
+        events: {
+          onReady: e => e.target.playVideo(),
+          onStateChange: onPlayerStateChange
+        }
+      });
+    }
+
+    if (checkInterval) clearInterval(checkInterval);
+    checkInterval = setInterval(checkClipEnd, 500);
+  }
+
+  function checkClipEnd() {
+    if (!player || !player.getCurrentTime) return;
+    try {
+      const t = player.getCurrentTime();
+      const endSec = clips[currentIndex].end || 0;
+      if (endSec > 0 && t >= endSec - 0.3) {
+        nextClip(true);
+      }
+    } catch(e) {}
+  }
+
+  function onPlayerStateChange(e) {
+    if (e.data === YT.PlayerState.ENDED) {
+      nextClip(true);
+    } else if (e.data === YT.PlayerState.PLAYING) {
+      hideStartOverlay();
+      document.getElementById('pauseBtn').textContent = '⏸ 一時停止';
+    } else if (e.data === YT.PlayerState.PAUSED) {
+      document.getElementById('pauseBtn').textContent = '▶ 再生';
+    }
+  }
+
+  function nextClip(isAuto) {
+    if (isAuto && Date.now() - lastAdvanceTime < ADVANCE_DEBOUNCE_MS) return;
+    lastAdvanceTime = Date.now();
+
+    if (checkInterval) clearInterval(checkInterval);
+    let next = currentIndex + 1;
+    while (next < clips.length && !parseYouTubeUrl(clips[next].url).videoId) {
+      next++;
+    }
+    if (next < clips.length) {
+      currentIndex = next;
+      loadCurrentClip();
+    } else {
+      alert('全部再生し終わりました！お疲れさまでした 🎉');
+      exitPlaying();
+    }
+  }
+
+  function previousClip(isAuto) {
+    if (isAuto && Date.now() - lastAdvanceTime < ADVANCE_DEBOUNCE_MS) return;
+    lastAdvanceTime = Date.now();
+
+    if (checkInterval) clearInterval(checkInterval);
+    let prev = currentIndex - 1;
+    while (prev >= 0 && !parseYouTubeUrl(clips[prev].url).videoId) {
+      prev--;
+    }
+    if (prev >= 0) {
+      currentIndex = prev;
+      loadCurrentClip();
+    }
+  }
+
+  function togglePause() {
+    if (!player) return;
+    const state = player.getPlayerState();
+    if (state === 1) player.pauseVideo();
+    else player.playVideo();
+  }
+
+  function exitPlaying() {
+    if (checkInterval) clearInterval(checkInterval);
+    if (player && player.stopVideo) player.stopVideo();
+    hideStartOverlay();
+    document.getElementById('editMode').style.display = 'block';
+    document.getElementById('playMode').style.display = 'none';
+  }
+
+  // --- Save to GitHub ---
+  function showSaveModal() {
+    const data = { clips };
+    const json = JSON.stringify(data, null, 2);
+    document.getElementById('jsonOutput').value = json;
+    const editUrl = playlistJsonExists
+      ? `https://github.com/${REPO_OWNER}/${REPO_NAME}/edit/main/workout/playlist.json`
+      : `https://github.com/${REPO_OWNER}/${REPO_NAME}/new/main?filename=workout/playlist.json`;
+    document.getElementById('editLink').href = editUrl;
+    document.getElementById('editMode').style.display = 'none';
+    document.getElementById('saveMode').style.display = 'block';
+  }
+
+  function hideSaveModal() {
+    document.getElementById('saveMode').style.display = 'none';
+    document.getElementById('editMode').style.display = 'block';
+  }
+
+  function copyJson() {
+    const json = document.getElementById('jsonOutput').value;
+    const done = () => alert('JSONをコピーしました。\n\n「📝 GitHubで playlist.json を編集」を押して、貼り付け→Commit changes してください。');
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(json).then(done, () => {
+        document.getElementById('jsonOutput').select();
+        document.execCommand('copy');
+        done();
+      });
+    } else {
+      document.getElementById('jsonOutput').select();
+      document.execCommand('copy');
+      done();
+    }
+  }
+
+  // --- Init ---
+  loadInitialData().then(() => {
+    renderClips();
+    const params = new URLSearchParams(location.search);
+    if (params.get('autoplay') === '1' && clips.some(c => parseYouTubeUrl(c.url).videoId)) {
+      startPlaying();
+    }
+  });
+</script>
+</body>
+</html>
