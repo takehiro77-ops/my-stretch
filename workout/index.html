@@ -84,14 +84,25 @@
     border: 1px solid #444;
   }
 
-  /* Play mode */
-  #playMode { display: none; }
+  /* Play mode — fullscreen, TV overscan-safe */
+  #playMode {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 50;
+    background: #000;
+    /* keep everything inside the TV's visible area (avoid overscan cut-off) */
+    padding: 5vh 5vw;
+    flex-direction: column;
+    gap: 10px;
+  }
+  body.playing { overflow: hidden; }
   .player-wrapper {
     position: relative;
+    flex: 1 1 auto;
     width: 100%;
-    padding-bottom: 56.25%;
+    min-height: 0;
     background: #000;
-    margin-bottom: 16px;
   }
   #player {
     position: absolute;
@@ -122,14 +133,16 @@
     background: #b71c1c;
   }
   .now-playing {
-    background: #1a1a1a;
-    padding: 14px;
-    border-radius: 8px;
-    margin-bottom: 12px;
+    flex: 0 0 auto;
     font-size: 16px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .now-playing .num { color: #d32f2f; font-weight: bold; margin-right: 8px; }
   .play-controls {
+    flex: 0 0 auto;
     display: flex;
     gap: 8px;
     justify-content: center;
@@ -163,7 +176,7 @@
   @media (min-width: 900px) {
     body { padding: 32px; }
     h1 { font-size: 28px; }
-    .now-playing { font-size: 22px; padding: 20px; }
+    .now-playing { font-size: 22px; }
     .play-controls button { font-size: 22px; padding: 18px 28px; min-width: 110px; }
   }
 
@@ -209,15 +222,15 @@
 
   <!-- PLAY MODE -->
   <div id="playMode">
-    <div class="now-playing">
-      <span class="num" id="clipNum"></span>
-      <span id="clipTitle"></span>
-    </div>
     <div class="player-wrapper">
       <div id="player"></div>
       <div id="startOverlay">
         <button id="startOverlayBtn" onclick="overlayStart()">▶ 決定ボタンで再生開始</button>
       </div>
+    </div>
+    <div class="now-playing">
+      <span class="num" id="clipNum"></span>
+      <span id="clipTitle"></span>
     </div>
     <div class="play-controls">
       <button onclick="previousClip()">⏮ 前</button>
@@ -450,7 +463,8 @@
     }
     document.getElementById('editMode').style.display = 'none';
     document.getElementById('saveMode').style.display = 'none';
-    document.getElementById('playMode').style.display = 'block';
+    document.getElementById('playMode').style.display = 'flex';
+    document.body.classList.add('playing');
     currentIndex = 0;
     while (currentIndex < clips.length && !parseYouTubeUrl(clips[currentIndex].url).videoId) {
       currentIndex++;
@@ -508,7 +522,8 @@
       player.loadVideoById({
         videoId: videoId,
         startSeconds: startSec,
-        endSeconds: endSec
+        endSeconds: endSec,
+        suggestedQuality: 'hd720'
       });
     } else {
       player = new YT.Player('player', {
@@ -525,7 +540,7 @@
           playsinline: 1
         },
         events: {
-          onReady: e => e.target.playVideo(),
+          onReady: e => { e.target.setPlaybackQuality('hd720'); e.target.playVideo(); },
           onStateChange: onPlayerStateChange
         }
       });
@@ -601,6 +616,7 @@
     if (checkInterval) clearInterval(checkInterval);
     if (player && player.stopVideo) player.stopVideo();
     hideStartOverlay();
+    document.body.classList.remove('playing');
     document.getElementById('editMode').style.display = 'block';
     document.getElementById('playMode').style.display = 'none';
   }
