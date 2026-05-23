@@ -99,6 +99,28 @@
     width: 100%;
     height: 100%;
   }
+  #startOverlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.78);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+  }
+  #startOverlayBtn {
+    font-size: 22px;
+    padding: 22px 36px;
+    background: #d32f2f;
+    border-color: #d32f2f;
+  }
+  #startOverlayBtn:focus {
+    outline: 4px solid #fff;
+    outline-offset: 2px;
+    background: #b71c1c;
+  }
   .now-playing {
     background: #1a1a1a;
     padding: 14px;
@@ -193,6 +215,9 @@
     </div>
     <div class="player-wrapper">
       <div id="player"></div>
+      <div id="startOverlay">
+        <button id="startOverlayBtn" onclick="overlayStart()">▶ 決定ボタンで再生開始</button>
+      </div>
     </div>
     <div class="play-controls">
       <button onclick="previousClip()">⏮ 前</button>
@@ -424,13 +449,44 @@
       return;
     }
     document.getElementById('editMode').style.display = 'none';
+    document.getElementById('saveMode').style.display = 'none';
     document.getElementById('playMode').style.display = 'block';
     currentIndex = 0;
     while (currentIndex < clips.length && !parseYouTubeUrl(clips[currentIndex].url).videoId) {
       currentIndex++;
     }
     lastAdvanceTime = Date.now(); // lock auto-advance briefly so old ENDED can't immediately skip
+    // Show the large start button as a fallback; if the browser allows
+    // autoplay it will start on its own and the overlay hides itself.
+    showStartOverlay();
     if (ytReady) {
+      loadCurrentClip();
+    } else {
+      pendingPlay = true;
+    }
+  }
+
+  function showStartOverlay() {
+    const overlay = document.getElementById('startOverlay');
+    if (!overlay) return;
+    overlay.style.display = 'flex';
+    // Autofocus so the Fire TV remote's center/OK button triggers it directly.
+    setTimeout(() => {
+      const btn = document.getElementById('startOverlayBtn');
+      if (btn) btn.focus();
+    }, 150);
+  }
+
+  function hideStartOverlay() {
+    const overlay = document.getElementById('startOverlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  function overlayStart() {
+    hideStartOverlay();
+    if (player && player.playVideo) {
+      player.playVideo();
+    } else if (ytReady) {
       loadCurrentClip();
     } else {
       pendingPlay = true;
@@ -494,6 +550,7 @@
     if (e.data === YT.PlayerState.ENDED) {
       nextClip(true);
     } else if (e.data === YT.PlayerState.PLAYING) {
+      hideStartOverlay();
       document.getElementById('pauseBtn').textContent = '⏸ 一時停止';
     } else if (e.data === YT.PlayerState.PAUSED) {
       document.getElementById('pauseBtn').textContent = '▶ 再生';
@@ -543,6 +600,7 @@
   function exitPlaying() {
     if (checkInterval) clearInterval(checkInterval);
     if (player && player.stopVideo) player.stopVideo();
+    hideStartOverlay();
     document.getElementById('editMode').style.display = 'block';
     document.getElementById('playMode').style.display = 'none';
   }
