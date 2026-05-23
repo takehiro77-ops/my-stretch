@@ -500,11 +500,35 @@
     hideStartOverlay();
     if (player && player.playVideo) {
       player.playVideo();
+      requestPlayerFullscreen();
     } else if (ytReady) {
       loadCurrentClip();
+      requestPlayerFullscreen();
     } else {
       pendingPlay = true;
     }
+  }
+
+  // Real fullscreen on the YouTube iframe; must run from a user gesture.
+  function requestPlayerFullscreen() {
+    try {
+      const el = (player && player.getIframe) ? player.getIframe() : document.getElementById('player');
+      if (!el) return;
+      const fn = el.requestFullscreen || el.webkitRequestFullscreen
+        || el.webkitRequestFullScreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+      if (fn) fn.call(el);
+    } catch (e) {}
+  }
+
+  function exitFullscreenIfAny() {
+    try {
+      const fsEl = document.fullscreenElement || document.webkitFullscreenElement
+        || document.mozFullScreenElement || document.msFullscreenElement;
+      if (!fsEl) return;
+      const fn = document.exitFullscreen || document.webkitExitFullscreen
+        || document.mozCancelFullScreen || document.msExitFullscreen;
+      if (fn) fn.call(document);
+    } catch (e) {}
   }
 
   function loadCurrentClip() {
@@ -523,7 +547,7 @@
         videoId: videoId,
         startSeconds: startSec,
         endSeconds: endSec,
-        suggestedQuality: 'hd720'
+        suggestedQuality: 'large'
       });
     } else {
       player = new YT.Player('player', {
@@ -540,7 +564,7 @@
           playsinline: 1
         },
         events: {
-          onReady: e => { e.target.setPlaybackQuality('hd720'); e.target.playVideo(); },
+          onReady: e => { e.target.setPlaybackQuality('large'); e.target.playVideo(); },
           onStateChange: onPlayerStateChange
         }
       });
@@ -616,6 +640,7 @@
     if (checkInterval) clearInterval(checkInterval);
     if (player && player.stopVideo) player.stopVideo();
     hideStartOverlay();
+    exitFullscreenIfAny();
     document.body.classList.remove('playing');
     document.getElementById('editMode').style.display = 'block';
     document.getElementById('playMode').style.display = 'none';
