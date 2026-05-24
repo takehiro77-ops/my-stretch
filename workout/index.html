@@ -500,35 +500,11 @@
     hideStartOverlay();
     if (player && player.playVideo) {
       player.playVideo();
-      requestPlayerFullscreen();
     } else if (ytReady) {
       loadCurrentClip();
-      requestPlayerFullscreen();
     } else {
       pendingPlay = true;
     }
-  }
-
-  // Real fullscreen on the YouTube iframe; must run from a user gesture.
-  function requestPlayerFullscreen() {
-    try {
-      const el = (player && player.getIframe) ? player.getIframe() : document.getElementById('player');
-      if (!el) return;
-      const fn = el.requestFullscreen || el.webkitRequestFullscreen
-        || el.webkitRequestFullScreen || el.mozRequestFullScreen || el.msRequestFullscreen;
-      if (fn) fn.call(el);
-    } catch (e) {}
-  }
-
-  function exitFullscreenIfAny() {
-    try {
-      const fsEl = document.fullscreenElement || document.webkitFullscreenElement
-        || document.mozFullScreenElement || document.msFullscreenElement;
-      if (!fsEl) return;
-      const fn = document.exitFullscreen || document.webkitExitFullscreen
-        || document.mozCancelFullScreen || document.msExitFullscreen;
-      if (fn) fn.call(document);
-    } catch (e) {}
   }
 
   function loadCurrentClip() {
@@ -587,7 +563,14 @@
 
   function onPlayerStateChange(e) {
     if (e.data === YT.PlayerState.ENDED) {
-      nextClip(true);
+      // A pre-roll ad can fire ENDED near the clip start; only advance when
+      // the main video really reached its end, else an ad skips a clip.
+      const end = clips[currentIndex] && clips[currentIndex].end;
+      let t = 0;
+      try { t = player.getCurrentTime() || 0; } catch (err) {}
+      if (!end || t >= end - 5) {
+        nextClip(true);
+      }
     } else if (e.data === YT.PlayerState.PLAYING) {
       hideStartOverlay();
       document.getElementById('pauseBtn').textContent = '⏸ 一時停止';
@@ -640,7 +623,6 @@
     if (checkInterval) clearInterval(checkInterval);
     if (player && player.stopVideo) player.stopVideo();
     hideStartOverlay();
-    exitFullscreenIfAny();
     document.body.classList.remove('playing');
     document.getElementById('editMode').style.display = 'block';
     document.getElementById('playMode').style.display = 'none';
