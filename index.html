@@ -153,6 +153,10 @@
     padding: 14px 20px;
     min-width: 80px;
   }
+  .play-controls button:focus {
+    outline: 4px solid #fff;
+    outline-offset: 2px;
+  }
 
   /* Save modal */
   #saveMode { display: none; }
@@ -534,13 +538,18 @@
           start: startSec,
           end: endSec,
           autoplay: 1,
-          controls: 1,
+          controls: 0,
+          disablekb: 1,
           rel: 0,
           modestbranding: 1,
           playsinline: 1
         },
         events: {
-          onReady: e => { e.target.setPlaybackQuality('large'); e.target.playVideo(); },
+          onReady: e => {
+            e.target.setPlaybackQuality('large');
+            e.target.playVideo();
+            try { e.target.getIframe().tabIndex = -1; } catch (_) {}
+          },
           onStateChange: onPlayerStateChange
         }
       });
@@ -573,11 +582,34 @@
       }
     } else if (e.data === YT.PlayerState.PLAYING) {
       hideStartOverlay();
+      focusControls();
       document.getElementById('pauseBtn').textContent = '⏸ 一時停止';
     } else if (e.data === YT.PlayerState.PAUSED) {
       document.getElementById('pauseBtn').textContent = '▶ 再生';
     }
   }
+
+  // The YouTube iframe traps the TV remote's D-pad; keep focus on our own
+  // buttons so 前/次/一時停止 stay reachable.
+  function focusControls() {
+    const ae = document.activeElement;
+    if (ae && ae.closest && ae.closest('.play-controls')) return;
+    const btn = document.getElementById('pauseBtn');
+    if (btn) btn.focus();
+  }
+
+  function handlePlaybackKeys(ev) {
+    if (!document.body.classList.contains('playing')) return;
+    const code = ev.keyCode;
+    if (ev.key === 'MediaTrackNext' || ev.key === 'MediaFastForward' || code === 176) {
+      ev.preventDefault(); nextClip(); focusControls();
+    } else if (ev.key === 'MediaTrackPrevious' || ev.key === 'MediaRewind' || code === 177) {
+      ev.preventDefault(); previousClip(); focusControls();
+    } else if (ev.key === 'MediaPlayPause' || code === 179) {
+      ev.preventDefault(); togglePause();
+    }
+  }
+  document.addEventListener('keydown', handlePlaybackKeys);
 
   function nextClip(isAuto) {
     if (isAuto && Date.now() - lastAdvanceTime < ADVANCE_DEBOUNCE_MS) return;
