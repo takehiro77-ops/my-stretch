@@ -285,6 +285,7 @@
   let pendingPlay = false;
   let lastAdvanceTime = 0;       // for debouncing auto-advance
   const ADVANCE_DEBOUNCE_MS = 1500;
+  let nudgeTimer = 0;
   let playlistJsonExists = false;
 
   // --- YouTube API ---
@@ -551,13 +552,25 @@
             e.target.playVideo();
             try { e.target.getIframe().tabIndex = -1; } catch (_) {}
           },
-          onStateChange: onPlayerStateChange
+          onStateChange: onPlayerStateChange,
+          onError: onPlayerError
         }
       });
     }
 
     if (checkInterval) clearInterval(checkInterval);
     checkInterval = setInterval(checkClipEnd, 500);
+
+    // The player sometimes stalls in CUED/UNSTARTED after a load (autoplay
+    // refused, pre-roll ad stuck); nudge it back into play.
+    clearTimeout(nudgeTimer);
+    nudgeTimer = setTimeout(function () {
+      try {
+        if (player && player.getPlayerState && player.getPlayerState() !== 1) {
+          player.playVideo();
+        }
+      } catch (_) {}
+    }, 1500);
   }
 
   function checkClipEnd() {
@@ -587,6 +600,19 @@
       document.getElementById('pauseBtn').textContent = '⏸ 一時停止';
     } else if (e.data === YT.PlayerState.PAUSED) {
       document.getElementById('pauseBtn').textContent = '▶ 再生';
+    } else if (e.data === YT.PlayerState.CUED) {
+      // Parked in CUED (autoplay blocked or post-load stall); kick play.
+      if (document.body.classList.contains('playing')) {
+        try { player.playVideo(); } catch (_) {}
+      }
+    }
+  }
+
+  function onPlayerError(e) {
+    // 101/150 = video disallows embedding (often surfaces via nocookie);
+    // skip past it so the playlist keeps moving.
+    if (e && (e.data === 101 || e.data === 150)) {
+      nextClip(true);
     }
   }
 
