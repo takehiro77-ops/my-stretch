@@ -475,6 +475,9 @@
       currentIndex++;
     }
     lastAdvanceTime = Date.now(); // lock auto-advance briefly so old ENDED can't immediately skip
+    // Drop any leftover player from a previous playthrough; reusing a
+    // stale one stalls the 1→2 transition on the YouTube replay overlay.
+    resetPlayer();
     // Show the large start button as a fallback; if the browser allows
     // autoplay it will start on its own and the overlay hides itself.
     showStartOverlay();
@@ -678,9 +681,23 @@
     else player.playVideo();
   }
 
+  function resetPlayer() {
+    if (checkInterval) { clearInterval(checkInterval); checkInterval = null; }
+    clearTimeout(nudgeTimer);
+    if (player) {
+      try { player.destroy(); } catch (_) {}
+      player = null;
+    }
+    const wrapper = document.querySelector('.player-wrapper');
+    if (wrapper && !document.getElementById('player')) {
+      const div = document.createElement('div');
+      div.id = 'player';
+      wrapper.insertBefore(div, wrapper.firstChild);
+    }
+  }
+
   function exitPlaying() {
-    if (checkInterval) clearInterval(checkInterval);
-    if (player && player.stopVideo) player.stopVideo();
+    resetPlayer();
     hideStartOverlay();
     document.body.classList.remove('playing');
     document.getElementById('editMode').style.display = 'block';
